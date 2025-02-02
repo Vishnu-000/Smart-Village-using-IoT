@@ -1,0 +1,71 @@
+// Include Libraries
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+
+// Blynk Authentication Token
+char auth[] = "Your_Blynk_Auth_Token"; 
+
+// Wi-Fi Credentials
+char ssid[] = "Your_WiFi_Name"; 
+char pass[] = "Your_WiFi_Password"; 
+
+// Ultrasonic Sensor Pins
+#define trigPin D1  // GPIO5 (D1)
+#define echoPin D2  // GPIO4 (D2)
+
+// Alert System
+#define buzzer D5  // GPIO14 (D5)
+#define led D6     // GPIO12 (D6)
+
+// Variables
+long duration;
+int distance;
+int threshold = 10;  // Water level threshold in cm
+
+void setup() {
+    Serial.begin(115200);
+    
+    // Initialize Blynk
+    Blynk.begin(auth, ssid, pass);
+
+    // Pin Modes
+    pinMode(trigPin, OUTPUT);
+    pinMode(echoPin, INPUT);
+    pinMode(buzzer, OUTPUT);
+    pinMode(led, OUTPUT);
+}
+
+void loop() {
+    Blynk.run(); // Keep Blynk running
+
+    // Measure Water Level
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
+
+    duration = pulseIn(echoPin, HIGH);
+    distance = duration * 0.034 / 2;  // Convert time to distance (cm)
+
+    Serial.print("Water Level: ");
+    Serial.print(distance);
+    Serial.println(" cm");
+
+    // Send data to Blynk (Virtual Pin V1)
+    Blynk.virtualWrite(V1, distance);  
+
+    // Check if water level is too high
+    if (distance < threshold) { 
+        digitalWrite(buzzer, HIGH);
+        digitalWrite(led, HIGH);
+
+        // Blynk Event for Notifications
+        Blynk.logEvent("high_water_level", "⚠️ ALERT: Water Level Too High! Possible Drainage Blockage!");
+    } else {
+        digitalWrite(buzzer, LOW);
+        digitalWrite(led, LOW);
+    }
+
+    delay(2000);  // Wait 2 seconds before next reading
+}
